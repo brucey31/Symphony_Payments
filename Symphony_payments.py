@@ -38,7 +38,6 @@ with open('allpago_symphony_payments.csv', 'wb') as csvfile:
 
     cursor.execute("select date(pay.created_at) as received, sub.id as order_id, pay.id as reference, pay.currency, pay.amount,sub.billing_period as package, pay.type as provider, pay.ip, sub.user_id as uid, sub.type as payment_type, case when sub.cancelled_at is not null then true else false end as cancelled from sfbusuudata.payment pay inner join sfbusuudata.subscription sub on sub.id = pay.subscription_id;")
     data = cursor.fetchall()
-    print data
 
     for row in data:
         writer.writerow(row)

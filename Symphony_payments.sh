@@ -1,2 +1,2 @@
 cd ~/Symphony_Payments
-python Symphony_Payments.py
+python Symphony_payments.py

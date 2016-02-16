@@ -1,8 +1,7 @@
 __author__ = 'brucepannaman'
 
 import MySQLdb
-import datetime
-import calendar
+import os
 import configparser
 import csv
 from subprocess import call
@@ -37,7 +36,7 @@ with open('allpago_symphony_payments.csv', 'wb') as csvfile:
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
-    cursor.execute("select date(pay.created_at), pay.currency, pay.amount, pay.type, pay.ip, sub.user_id, sub.type from sfbusuudata.payment pay inner join sfbusuudata.subscription sub on sub.id = pay.subscription_id;")
+    cursor.execute("select date(pay.created_at) as received, sub.id as order_id, pay.id as reference, pay.currency, pay.amount,sub.billing_period as package, pay.type as provider, pay.ip, sub.user_id as uid, sub.type as payment_type from sfbusuudata.payment pay inner join sfbusuudata.subscription sub on sub.id = pay.subscription_id;")
     data = cursor.fetchall()
     print data
 
@@ -45,12 +44,12 @@ with open('allpago_symphony_payments.csv', 'wb') as csvfile:
         writer.writerow(row)
 
     db.close()
-    
+
 
 # QIWI WALLET SYMPHONY PAYMENTS
 
 # Set up csv file to write data to
-with open('allpago_symphony_payments.csv', 'wb') as csvfile:
+with open('qiwi_symphony_payments.csv', 'wb') as csvfile:
     writer = csv.writer(csvfile, delimiter=',', quotechar='"')
 
 
@@ -60,7 +59,7 @@ with open('allpago_symphony_payments.csv', 'wb') as csvfile:
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
-    cursor.execute("select date(pay.created_at), pay.currency, pay.amount, pay.type, pay.ip, sub.user_id, sub.type from sfbusuudata.payment pay inner join sfbusuudata.subscription sub on sub.id = pay.subscription_id;")
+    cursor.execute("select date(pay.created_at) as received, substring(sub.shopper_reference,12,15) as order_id, pay.psp_reference as reference, pay.currency, pay.amount,sub.billing_period as package, sub.selected_brand as provider, pay.ip as ip, sub.user_id as uid, 'Qiwi Wallet' as payment_type from sfbusuudata.adyen_payment pay inner join sfbusuudata.adyen_subscription sub on sub.id = pay.subscription_id where sub.status != 'unpaid_signup';")
     data = cursor.fetchall()
     print data
 
@@ -68,3 +67,29 @@ with open('allpago_symphony_payments.csv', 'wb') as csvfile:
         writer.writerow(row)
 
     db.close()
+
+# UPLOAD SYMPHONY PAYMENTS TO REDSHIFT
+print 'Uploading to s3'
+call(["s3cmd", "put", 'qiwi_symphony_payments.csv',  "s3://bibusuu/symphony_payments/"])
+
+print 'Uploading to s3'
+call(["s3cmd", "put", 'allpago_symphony_payments.csv',  "s3://bibusuu/symphony_payments/"])
+
+# deleting old payments
+os.remove('allpago_symphony_payments.csv')
+os.remove('qiwi_symphony_payments.csv')
+
+
+# Connect to RedShift
+conn_string = "dbname=%s port=%s user=%s password=%s host=%s" %(RED_USER, RED_PORT, RED_USER, RED_PASSWORD, RED_HOST)
+print "Connecting to database\n        ->%s" % (conn_string)
+conn = psycopg2.connect(conn_string)
+
+cursor = conn.cursor()
+
+print "Deleting old table symphony_payments2"
+cursor.execute("Drop table if exists symphony_payments2;")
+print "Creating table symphony_payments2"
+cursor.execute("create table symphony_payments2( received date, order_id int, reference, int, currency varchar(5), amount decimal, billing_period varchar(30), provider varchar(20), ip varchar(30), uid int, payment_method varchar(50) ); ")
+print "Adding Qiwi Data to symphony_payments2"
+cursor.execute("COPY symphony_payments2  FROM 's3://busuu.data/MHE_us_pilot_codes.csv'  CREDENTIALS 'aws_access_key_id=AKIAITPOBFF7K7ZPLIRQ;aws_secret_access_key=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' CSV;")

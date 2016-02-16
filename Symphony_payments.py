@@ -36,7 +36,7 @@ with open('allpago_symphony_payments.csv', 'wb') as csvfile:
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
-    cursor.execute("select date(pay.created_at) as received, sub.id as order_id, pay.id as reference, pay.currency, pay.amount,sub.billing_period as package, pay.type as provider, pay.ip, sub.user_id as uid, sub.type as payment_type from sfbusuudata.payment pay inner join sfbusuudata.subscription sub on sub.id = pay.subscription_id;")
+    cursor.execute("select date(pay.created_at) as received, sub.id as order_id, pay.id as reference, pay.currency, pay.amount,sub.billing_period as package, pay.type as provider, pay.ip, sub.user_id as uid, sub.type as payment_type, case when sub.cancelled_at is not null then true else false end as cancelled from sfbusuudata.payment pay inner join sfbusuudata.subscription sub on sub.id = pay.subscription_id;")
     data = cursor.fetchall()
     print data
 
@@ -59,7 +59,7 @@ with open('qiwi_symphony_payments.csv', 'wb') as csvfile:
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
-    cursor.execute("select date(pay.created_at) as received, substring(sub.shopper_reference,12,15) as order_id, pay.psp_reference as reference, pay.currency, pay.amount,sub.billing_period as package, sub.selected_brand as provider, pay.ip as ip, sub.user_id as uid, 'Qiwi Wallet' as payment_type from sfbusuudata.adyen_payment pay inner join sfbusuudata.adyen_subscription sub on sub.id = pay.subscription_id where sub.status != 'unpaid_signup';")
+    cursor.execute("select date(pay.created_at) as received, substring(sub.shopper_reference,12,15) as order_id, pay.psp_reference as reference, pay.currency, pay.amount,sub.billing_period as package, sub.selected_brand as provider, pay.ip as ip, sub.user_id as uid, 'Qiwi Wallet' as payment_type, case when sub.cancelled_at is not null then true else false end as cancelled from sfbusuudata.adyen_payment pay inner join sfbusuudata.adyen_subscription sub on sub.id = pay.subscription_id where sub.status != 'unpaid_signup';")
     data = cursor.fetchall()
     print data
 
@@ -90,6 +90,22 @@ cursor = conn.cursor()
 print "Deleting old table symphony_payments2"
 cursor.execute("Drop table if exists symphony_payments2;")
 print "Creating table symphony_payments2"
-cursor.execute("create table symphony_payments2( received date, order_id int, reference, int, currency varchar(5), amount decimal, billing_period varchar(30), provider varchar(20), ip varchar(30), uid int, payment_method varchar(50) ); ")
+cursor.execute("create table symphony_payments2( received varchar(15), order_id varchar(100), reference varchar(100), currency varchar(5), amount decimal, billing_period varchar(30), provider varchar(20), ip varchar(30), uid int, payment_method varchar(50), cancelled boolean ); ")
 print "Adding Qiwi Data to symphony_payments2"
-cursor.execute("COPY symphony_payments2  FROM 's3://busuu.data/MHE_us_pilot_codes.csv'  CREDENTIALS 'aws_access_key_id=AKIAITPOBFF7K7ZPLIRQ;aws_secret_access_key=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' CSV;")
+cursor.execute("COPY symphony_payments2  FROM 's3://bibusuu/symphony_payments/qiwi_symphony_payments.csv'  CREDENTIALS 'aws_access_key_id=AKIAITPOBFF7K7ZPLIRQ;aws_secret_access_key=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' CSV;")
+print "Adding Allpago Data to symphony_payments2"
+cursor.execute("COPY symphony_payments2  FROM 's3://bibusuu/symphony_payments/allpago_symphony_payments.csv'  CREDENTIALS 'aws_access_key_id=AKIAITPOBFF7K7ZPLIRQ;aws_secret_access_key=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' CSV;")
+print "Deleting old table symphony_payments"
+cursor.execute("Drop table if exists symphony_payments;")
+print "Renaming table symphony_payments2 to symphony_payments"
+cursor.execute("alter table symphony_payments2 rename to symphony_payments;")
+
+# AGGREGATE SYMPHONY PAYMENTS WITH RECEIPTS AGGREGATED
+print "Aggregating receipts_aggregated"
+cursor.execute("drop table if exists receipts_aggregated2")
+cursor.execute("create table receipts_aggregated2 as select * from receipts_aggregated union all select distinct MD5(reference) as receipt_id, order_id as order_id, uid, provider, payment_method as method, reference, amount, sp.currency, fx.rate as rate, round((amount/fx.rate),2) as eur_amount, (rank() over (partition by uid order by received asc)) -1 as recurring, received from symphony_payments sp inner join bs_exchange_rates fx on date((TIMESTAMP 'epoch' + fx.timestamp * INTERVAL '1 Second ')) = sp.received and fx.currency = sp.currency;")
+cursor.execute("drop table if exists receipts_aggregated")
+cursor.execute("alter table receipts_aggregated2 rename to receipts_aggregated;")
+
+conn.commit()
+conn.close()

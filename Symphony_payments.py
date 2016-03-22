@@ -58,7 +58,7 @@ with open('qiwi_symphony_payments.csv', 'wb') as csvfile:
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
-    cursor.execute("select date(pay.created_at) as received, substring(sub.shopper_reference,12,15) as order_id, pay.psp_reference as reference, pay.currency, pay.amount,sub.billing_period as package, sub.selected_brand as provider, pay.ip as ip, sub.user_id as uid, 'Qiwi Wallet' as payment_type, case when sub.cancelled_at is not null then true else false end as cancelled from sfbusuudata.adyen_payment pay inner join sfbusuudata.adyen_subscription sub on sub.id = pay.subscription_id where sub.status != 'unpaid_signup';")
+    cursor.execute("select date(pay.created_at) as received, substring(sub.shopper_reference,12,15) as order_id, pay.psp_reference as reference, pay.currency, round(pay.amount/100),sub.billing_period as package, sub.selected_brand as provider, pay.ip as ip, sub.user_id as uid, 'Qiwi Wallet' as payment_type, case when sub.cancelled_at is not null then true else false end as cancelled from sfbusuudata.adyen_payment pay inner join sfbusuudata.adyen_subscription sub on sub.id = pay.subscription_id where sub.status != 'unpaid_signup';")
     data = cursor.fetchall()
 
     for row in data:

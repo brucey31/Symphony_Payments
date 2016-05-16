@@ -36,7 +36,7 @@ with open('allpago_symphony_payments.csv', 'wb') as csvfile:
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
-    cursor.execute("select date(pay.created_at) as received, sub.id as order_id, pay.id as reference, pay.currency, pay.amount,sub.billing_period as package, pay.type as provider, pay.ip, sub.user_id as uid, sub.type as payment_type, case when sub.cancelled_at is not null then true else false end as cancelled from sfbusuudata.payment pay inner join sfbusuudata.subscription sub on sub.id = pay.subscription_id;")
+    cursor.execute("select date(pay.created_at) as received, sub.id as order_id, pay.id as reference,pay.currency,  pay.amount,  sub.billing_period as package,  pay.type as provider,  pay.ip,  sub.user_id as uid,  sub.type as payment_type,  case when sub.cancelled_at is not null then true else false end as cancelled,  sub.cancelled_at as cancelled_at  from sfbusuudata.payment pay  inner join sfbusuudata.subscription sub on sub.id = pay.subscription_id;")
     data = cursor.fetchall()
 
     for row in data:
@@ -58,7 +58,7 @@ with open('qiwi_symphony_payments.csv', 'wb') as csvfile:
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
-    cursor.execute("select date(pay.created_at) as received, substring(sub.shopper_reference,12,15) as order_id, pay.psp_reference as reference, pay.currency, round(pay.amount/100),sub.billing_period as package, sub.selected_brand as provider, pay.ip as ip, sub.user_id as uid, 'Qiwi Wallet' as payment_type, case when sub.cancelled_at is not null then true else false end as cancelled from sfbusuudata.adyen_payment pay inner join sfbusuudata.adyen_subscription sub on sub.id = pay.subscription_id where sub.status != 'unpaid_signup';")
+    cursor.execute("select date(pay.created_at) as received, substring(sub.shopper_reference,12,15) as order_id, pay.psp_reference as reference, pay.currency, round(pay.amount/100),sub.billing_period as package, sub.selected_brand as provider, pay.ip as ip, sub.user_id as uid, 'Qiwi Wallet' as payment_type, case when sub.cancelled_at is not null then true else false end as cancelled,null as cancelled_at from sfbusuudata.adyen_payment pay inner join sfbusuudata.adyen_subscription sub on sub.id = pay.subscription_id where sub.status != 'unpaid_signup';")
     data = cursor.fetchall()
 
     for row in data:
@@ -88,7 +88,7 @@ cursor = conn.cursor()
 print "Deleting old table symphony_payments2"
 cursor.execute("Drop table if exists symphony_payments2;")
 print "Creating table symphony_payments2"
-cursor.execute("create table symphony_payments2( received varchar(15), order_id varchar(100), reference varchar(100), currency varchar(5), amount decimal, billing_period varchar(30), provider varchar(20), ip varchar(30), uid int, payment_method varchar(50), cancelled boolean ); ")
+cursor.execute("create table symphony_payments2( received varchar(15), order_id varchar(100), reference varchar(100), currency varchar(5), amount decimal, billing_period varchar(30), provider varchar(20), ip varchar(30), uid int, payment_method varchar(50), cancelled boolean, cancelled_at timestamp ); ")
 print "Adding Qiwi Data to symphony_payments2"
 cursor.execute("COPY symphony_payments2  FROM 's3://bibusuu/symphony_payments/qiwi_symphony_payments.csv'  CREDENTIALS 'aws_access_key_id=AKIAITPOBFF7K7ZPLIRQ;aws_secret_access_key=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' CSV;")
 print "Adding Allpago Data to symphony_payments2"

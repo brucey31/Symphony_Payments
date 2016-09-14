@@ -90,9 +90,9 @@ cursor.execute("Drop table if exists symphony_payments2;")
 print "Creating table symphony_payments2"
 cursor.execute("create table symphony_payments2( received varchar(15), order_id varchar(100), reference varchar(100), currency varchar(5), amount decimal, billing_period varchar(30), provider varchar(20), ip varchar(30), uid int, payment_method varchar(50), cancelled boolean, cancelled_at timestamp ); ")
 print "Adding Qiwi Data to symphony_payments2"
-cursor.execute("COPY symphony_payments2  FROM 's3://bibusuu/symphony_payments/qiwi_symphony_payments.csv'  CREDENTIALS 'aws_access_key_id=AKIAITPOBFF7K7ZPLIRQ;aws_secret_access_key=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' CSV;")
+cursor.execute("COPY symphony_payments2  FROM 's3://bibusuu/symphony_payments/qiwi_symphony_payments.csv'  CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s' CSV;" % (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY))
 print "Adding Allpago Data to symphony_payments2"
-cursor.execute("COPY symphony_payments2  FROM 's3://bibusuu/symphony_payments/allpago_symphony_payments.csv'  CREDENTIALS 'aws_access_key_id=AKIAITPOBFF7K7ZPLIRQ;aws_secret_access_key=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' CSV;")
+cursor.execute("COPY symphony_payments2  FROM 's3://bibusuu/symphony_payments/allpago_symphony_payments.csv'  CREDENTIALS 'aws_access_key_id=%s;aws_secret_access_key=%s' CSV;" % (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY))
 print "Deleting old table symphony_payments"
 cursor.execute("Drop table if exists symphony_payments;")
 print "Renaming table symphony_payments2 to symphony_payments"

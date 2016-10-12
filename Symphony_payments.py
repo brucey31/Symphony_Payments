@@ -97,6 +97,7 @@ print "Deleting old table symphony_payments"
 cursor.execute("Drop table if exists symphony_payments;")
 print "Renaming table symphony_payments2 to symphony_payments"
 cursor.execute("create table symphony_payments as select sym.* from symphony_payments2 sym left join ab_tests.allpago_boleto_failures_Jul_2016 hack on hack.order_id = sym.order_id where hack.order_id is null;")
+cursor.execute("Drop table if exists symphony_payments2;")
 
 # AGGREGATE SYMPHONY PAYMENTS WITH RECEIPTS AGGREGATED
 print "Aggregating receipts_aggregated"

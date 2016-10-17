@@ -36,7 +36,7 @@ with open('allpago_symphony_payments.csv', 'wb') as csvfile:
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
-    cursor.execute("select date(pay.created_at) as received, sub.id as order_id, pay.id as reference,pay.currency,  pay.amount,  sub.billing_period as package,  pay.type as provider,  pay.ip,  sub.user_id as uid,  sub.type as payment_type,  case when sub.cancelled_at is not null then true else false end as cancelled,  sub.cancelled_at as cancelled_at, status  from sfbusuudata.payment pay  inner join sfbusuudata.subscription sub on sub.id = pay.subscription_id;")
+    cursor.execute("select date(pay.created_at) as received,  sub.id as order_id,  pay.id as reference, pay.currency,   pay.amount,   sub.billing_period as package,   pay.type as provider,   pay.ip,   sub.user_id as uid,   sub.type as payment_type,   case when sub.cancelled_at is not null then true else false end as cancelled,   sub.cancelled_at as cancelled_at,   sub.status    from sfbusuudata.subscription sub   left join sfbusuudata.payment pay on sub.id = pay.subscription_id;")
     data = cursor.fetchall()
 
     for row in data:
@@ -102,7 +102,7 @@ cursor.execute("Drop table if exists symphony_payments2;")
 # AGGREGATE SYMPHONY PAYMENTS WITH RECEIPTS AGGREGATED
 print "Aggregating receipts_aggregated"
 cursor.execute("drop table if exists receipts_aggregated2")
-cursor.execute("create table receipts_aggregated2 as select * from receipts_aggregated union all select distinct MD5(reference) as receipt_id, order_id as order_id, uid, provider, payment_method as method, reference, amount, sp.currency, fx.rate as rate, round((amount/fx.rate),2) as eur_amount, (rank() over (partition by uid order by received asc)) -1 as recurring, received from symphony_payments sp inner join bs_exchange_rates fx on date((TIMESTAMP 'epoch' + fx.timestamp * INTERVAL '1 Second ')) = sp.received and fx.currency = sp.currency;")
+cursor.execute("create table receipts_aggregated2 as select * from receipts_aggregated union all select distinct MD5(reference) as receipt_id, order_id as order_id, uid, provider, payment_method as method, reference, amount, sp.currency, fx.rate as rate, round((amount/fx.rate),2) as eur_amount, (rank() over (partition by uid order by received asc)) -1 as recurring, received from symphony_payments sp inner join bs_exchange_rates fx on date((TIMESTAMP 'epoch' + fx.timestamp * INTERVAL '1 Second ')) = sp.received and fx.currency = sp.currency where status != 'unpaid_signup';")
 cursor.execute("drop table if exists receipts_aggregated")
 cursor.execute("alter table receipts_aggregated2 rename to receipts_aggregated;")
 
